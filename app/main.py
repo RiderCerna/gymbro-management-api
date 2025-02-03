@@ -1,14 +1,18 @@
 from fastapi import FastAPI
-from routes import operacion
-from routes import ejemplo
+from routes import usuarios
+from routes import ejercicios
+from routes import rutinas
 
 app = FastAPI(
-    title="Titulo API",
+    title="API Gymbro",
     description="API",
     version="2.0.0"
 )
 
 origins = ["*"]
 
-app.include_router(operacion.router)
-app.include_router(ejemplo.router)
+##app.include_router(operacion.router)
+##app.include_router(ejemplo.router)
+app.include_router(usuarios.router)
+app.include_router(ejercicios.router)
+app.include_router(rutinas.router)
