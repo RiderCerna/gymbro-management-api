@@ -1,9 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
+import random
+'''' Funcion para autogenerar IDS
 
+'''
 
 class Usuario(BaseModel):
-    id_usuario: str
     nombre_usuario: str
     apellido_paterno: str
     apellido_materno: str
@@ -14,3 +16,5 @@ class Usuario(BaseModel):
     peso: float
     estado: str
     foto: Optional[str] = None
+
+

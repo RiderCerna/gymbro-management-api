@@ -11,8 +11,7 @@ app = FastAPI(
 
 origins = ["*"]
 
-##app.include_router(operacion.router)
-##app.include_router(ejemplo.router)
 app.include_router(usuarios.router)
 app.include_router(ejercicios.router)
 app.include_router(rutinas.router)
+

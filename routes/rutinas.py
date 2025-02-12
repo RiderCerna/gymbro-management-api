@@ -38,3 +38,4 @@ def listar_rutinas():
     content = [dict(zip(columns, row)) for row in rows]
     conn.close()
     return content
+
