@@ -1,7 +1,6 @@
 from fastapi import FastAPI
-from routes import usuarios
-from routes import ejercicios
-from routes import rutinas
+from fastapi.middleware.cors import CORSMiddleware
+from routes import usuarios, ejercicios,rutinas 
 
 app = FastAPI(
     title="API Gymbro",
@@ -10,6 +9,15 @@ app = FastAPI(
 )
 
 origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 
 app.include_router(usuarios.router)
 app.include_router(ejercicios.router)

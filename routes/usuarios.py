@@ -68,7 +68,7 @@ def crear_usuario(usuario: Usuario):
     
     # Validación de registros requeridos
     campos_requeridos = ["nombre_usuario", "apellido_paterno", "apellido_materno", "celular",
-    "correo", "contraseña", "estatura", "peso"]
+    "correo", "clave", "estatura", "peso"]
     for campo in campos_requeridos:
         if not getattr(usuario, campo):  # getattr() accede al atributo dinámicamente
             conn.close()
@@ -77,10 +77,10 @@ def crear_usuario(usuario: Usuario):
 
     cursor.execute("""
         INSERT INTO tb_usuario (id_usuario, nombre_usuario, apellido_paterno, apellido_materno, 
-                   celular, correo, contraseña, fecha_registro, estatura, peso, estado, foto) 
+                   celular, correo, clave, fecha_registro, estatura, peso, estado, foto) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (id_usuario, usuario.nombre_usuario, usuario.apellido_paterno, usuario.apellido_materno, 
-          usuario.celular, usuario.correo, usuario.contraseña, fecha_actual, usuario.estatura, 
+          usuario.celular, usuario.correo, usuario.clave, fecha_actual, usuario.estatura, 
           usuario.peso, usuario.estado, usuario.foto))
     
     conn.commit()
@@ -94,7 +94,7 @@ def listar_usuarios():
     if not conn:
         raise HTTPException(status_code=500, detail="Error en la conexión a la base de datos")
     cursor = conn.cursor()
-    cursor.execute("SELECT id_usuario, nombre_usuario, apellido_paterno, correo, contraseña FROM tb_usuario")
+    cursor.execute("SELECT id_usuario, nombre_usuario, apellido_paterno, correo, clave FROM tb_usuario")
     rows = cursor.fetchall()
     columns = [column[0] for column in cursor.description]
     content = [dict(zip(columns, row)) for row in rows]
@@ -104,44 +104,55 @@ def listar_usuarios():
 
 class LoginRequest(BaseModel):
     correo: str
-    contraseña: str
+    clave: str
 
-##parámetros en general con un body
 @router.post("/login", tags=["Usuarios"])
 def ingresar_a_la_aplicacion(request: LoginRequest):
+    """
+    Inicia sesión en la aplicación y devuelve todos los datos del usuario, excepto la clave.
+    """
     conn = get_db_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="Error en la conexión a la base de datos")
-
+        return {"isValid": False, "message": "Error en la conexión a la base de datos"}
+    
     try:
         cursor = conn.cursor()
         
+        # Verificar si el correo existe
         cursor.execute("SELECT id_usuario FROM tb_usuario WHERE correo = ?", (request.correo,))
         user = cursor.fetchone()
-
-        if not user:
-            raise HTTPException(status_code=401, detail="Correo incorrecto")
-
-        user_id = user[0]
-
-        cursor.execute("SELECT contraseña FROM tb_usuario WHERE id_usuario = ?", (user_id,))
-        stored_password = cursor.fetchone()
-        cursor.execute("SELECT nombre_usuario FROM tb_usuario WHERE id_usuario = ?", (user_id,)) 
-        nombre_message = cursor.fetchone()
-        cursor.execute("SELECT apellido_paterno FROM tb_usuario WHERE id_usuario = ?", (user_id,)) 
-        apellido_message = cursor.fetchone()
-
-        if not stored_password or request.contraseña != stored_password[0]:
-            raise HTTPException(status_code=401, detail="Contraseña incorrecta")
         
-        return{"mensaje": f"Ingreso exitoso, bienvenido {nombre_message[0]} {apellido_message[0]}"}
-
+        if not user:
+            return {"isValid": False, "message": "Correo incorrecto"}
+        
+        user_id = user[0]
+        
+        # Verificar la clave
+        cursor.execute("SELECT clave FROM tb_usuario WHERE id_usuario = ?", (user_id,))
+        stored_password = cursor.fetchone()
+        
+        if not stored_password or request.clave != stored_password[0]:
+            return {"isValid": False, "message": "Clave incorrecta"}
+        
+        # Obtener todos los datos del usuario excepto la clave
+        cursor.execute("""
+            SELECT id_usuario, nombre_usuario, apellido_paterno, apellido_materno, celular, correo, 
+                   fecha_registro, estatura, peso, estado, foto
+            FROM tb_usuario WHERE id_usuario = ?
+        """, (user_id,))
+        
+        user_data = cursor.fetchone()
+        columns = [column[0] for column in cursor.description]
+        user_info = dict(zip(columns, user_data))
+        
+        return {"isValid": True, "content": user_info}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al iniciar sesión: {str(e)}")
+        return {"isValid": False, "message": f"Error al iniciar sesión: {str(e)}"}
     
     finally:
         conn.close()
+
 
 @router.get("/usuarios/todos", tags=["Usuarios"])
 def obtener_todos_los_usuarios():
@@ -183,10 +194,10 @@ def actualizar_usuario(id_usuario: str, usuario: Usuario):
         cursor.execute("""
             UPDATE tb_usuario 
             SET  
-                celular = ?, correo = ?, contraseña = ?, estatura = ?, peso = ?, foto = ?
+                celular = ?, correo = ?, clave = ?, estatura = ?, peso = ?, foto = ?
             WHERE id_usuario = ?
         """, (
-            usuario.celular, usuario.correo, usuario.contraseña, usuario.estatura,
+            usuario.celular, usuario.correo, usuario.clave, usuario.estatura,
             usuario.peso, usuario.foto, id_usuario
         ))
 
@@ -198,6 +209,8 @@ def actualizar_usuario(id_usuario: str, usuario: Usuario):
     
     finally:
         conn.close()
+
+
 
 @router.delete("/usuarios/{id_usuario}", tags=["Usuarios"])
 def eliminar_usuario(id_usuario: str):
